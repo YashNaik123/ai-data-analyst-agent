@@ -1,0 +1,17 @@
+pack_name: default
+routes:
+  - trigger_patterns: ["correlat", "relationship between", "related to"]
+    method: correlation_analysis
+    rationale: "Measures linear relationship strength between numeric variables"
+  - trigger_patterns: ["drive", "matters most", "important", "influence"]
+    method: attribute_ranking_regression
+    rationale: "Ranks variables by their influence on the outcome"
+  - trigger_patterns: ["over time", "trend", "increasing", "declining"]
+    method: trend_analysis
+    rationale: "Analyzes how a metric changes across time periods"
+  - trigger_patterns: ["unusual", "anomaly", "outlier", "spike"]
+    method: anomaly_detection
+    rationale: "Flags data points that deviate significantly from the norm"
+  - trigger_patterns: ["segment", "group", "cluster", "types of customers"]
+    method: segmentation
+    rationale: "Groups records into similar clusters based on shared attributes"

@@ -1,4 +1,3 @@
-cat > data/sample_sales.csv << 'EOF'
 product,brand,price,units_sold
 Widget A,BrandX,9.99,120
 Widget B,BrandY,14.99,80
@@ -6,4 +5,3 @@ Widget C,BrandX,9.99,95
 Widget D,BrandZ,19.99,
 Widget E,BrandY,14.99,60
 Widget A,BrandX,9.99,120
-EOF
