@@ -4,12 +4,15 @@ from sklearn.cluster import KMeans
 from sklearn.ensemble import IsolationForest
 from scipy import stats
 
+def descriptive_stats(df: pd.DataFrame) -> dict:
+    return {"result": df.describe().to_dict(), "type": "descriptive_stats"}
+
 def correlation_analysis(df: pd.DataFrame, cols: list) -> dict:
     corr = df[cols].corr()
     return {"result": corr.to_dict(), "type": "correlation_matrix"}
 
 def attribute_ranking_regression(df: pd.DataFrame, target: str, features: list) -> dict:
-    data = df[[target] + features].dropna()  # drop rows missing target or any feature
+    data = df[[target] + features].dropna()
     X = pd.get_dummies(data[features], drop_first=True)
     y = data[target]
     model = LinearRegression().fit(X, y)

@@ -1,3 +1,4 @@
+import inspect
 from agents.profiling_agent import run_profiling_agent
 from agents.router_agent import load_pack, route_question
 from tools import ml_tools, chart_tools
@@ -5,6 +6,7 @@ from agents.insight_agent import generate_insight
 from llm.llm_client import LLMClient
 
 METHOD_MAP = {
+    "descriptive_stats": ml_tools.descriptive_stats,
     "correlation_analysis": ml_tools.correlation_analysis,
     "attribute_ranking_regression": ml_tools.attribute_ranking_regression,
     "segmentation": ml_tools.segmentation,
@@ -30,7 +32,15 @@ class Controller:
         if not method_fn:
             return {"error": f"Method '{route['method']}' not implemented yet"}
 
-        analysis_result = method_fn(self.state["df"], **method_kwargs)
+        # Only pass kwargs that this specific method actually accepts
+        accepted_params = set(inspect.signature(method_fn).parameters.keys())
+        filtered_kwargs = {k: v for k, v in method_kwargs.items() if k in accepted_params}
+
+        try:
+            analysis_result = method_fn(self.state["df"], **filtered_kwargs)
+        except Exception as e:
+            return {"error": f"Analysis failed: {e}"}
+
         chart_info = chart_tools.select_and_render_chart(analysis_result["type"], analysis_result["result"])
         insight = generate_insight(analysis_result, self.llm)
 
