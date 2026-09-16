@@ -9,11 +9,12 @@ def correlation_analysis(df: pd.DataFrame, cols: list) -> dict:
     return {"result": corr.to_dict(), "type": "correlation_matrix"}
 
 def attribute_ranking_regression(df: pd.DataFrame, target: str, features: list) -> dict:
-    X = pd.get_dummies(df[features], drop_first=True)
-    y = df[target]
+    data = df[[target] + features].dropna()  # drop rows missing target or any feature
+    X = pd.get_dummies(data[features], drop_first=True)
+    y = data[target]
     model = LinearRegression().fit(X, y)
     ranking = dict(sorted(zip(X.columns, model.coef_), key=lambda x: abs(x[1]), reverse=True))
-    return {"result": ranking, "r_squared": model.score(X, y), "type": "regression_ranking"}
+    return {"result": ranking, "r_squared": model.score(X, y), "type": "regression_ranking", "n_rows_used": len(data)}
 
 def segmentation(df: pd.DataFrame, features: list, n_clusters: int = 3) -> dict:
     X = df[features].dropna()
