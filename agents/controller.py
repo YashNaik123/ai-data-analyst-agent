@@ -1,7 +1,8 @@
 import inspect
 from agents.profiling_agent import run_profiling_agent
 from agents.router_agent import load_pack, route_question
-from tools import ml_tools, chart_tools
+from tools import ml_tools, chart_tools, comprehensive_tools
+from tools.chart_gallery import generate_attribute_charts
 from tools.column_selector import select_columns
 from agents.insight_agent import generate_insight
 from llm.llm_client import LLMClient
@@ -13,6 +14,7 @@ METHOD_MAP = {
     "segmentation": ml_tools.segmentation,
     "anomaly_detection": ml_tools.anomaly_detection,
     "hypothesis_testing": ml_tools.hypothesis_testing,
+    "comprehensive_analysis": comprehensive_tools.comprehensive_analysis,
 }
 
 class Controller:
@@ -30,6 +32,15 @@ class Controller:
 
     def ask(self, question: str, method_kwargs: dict = None):
         route = route_question(question, self.pack)
+
+        # Special case: chart_gallery returns multiple charts, handled separately
+        if route["method"] == "chart_gallery":
+            numeric_cols = list(self.state["df"].select_dtypes(include="number").columns)
+            q_lower = question.lower()
+            target = next((c for c in numeric_cols if c.lower() in q_lower), numeric_cols[0] if numeric_cols else None)
+            charts = generate_attribute_charts(self.state["df"], target=target)
+            return {"route": route, "gallery": charts, "gallery_target": target}
+
         method_fn = METHOD_MAP.get(route["method"])
         if not method_fn:
             return {"error": f"Method '{route['method']}' not implemented yet"}

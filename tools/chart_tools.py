@@ -9,6 +9,7 @@ CHART_DECISION_TABLE = {
     "anomaly_detection": ("scatter_highlighted", "A scatter plot with anomalies highlighted shows outliers in context"),
     "hypothesis_test": ("bar_comparison", "A bar comparison shows the statistic and significance threshold clearly"),
     "markov_transition": ("heatmap", "A heatmap shows transition probabilities between all product pairs"),
+    "comprehensive_analysis": ("heatmap", "A correlation heatmap highlights the strongest relationships across all numeric attributes as the centerpiece of the full analysis"),
 }
 
 def select_and_render_chart(analysis_type: str, data: dict):
@@ -17,8 +18,9 @@ def select_and_render_chart(analysis_type: str, data: dict):
 
     try:
         if chart_type == "heatmap":
-            labels = list(data.keys())
-            z_values = [[data[col].get(row, None) for col in labels] for row in labels]
+            heatmap_data = data.get("correlations", data) if isinstance(data, dict) and "correlations" in data else data
+            labels = list(heatmap_data.keys())
+            z_values = [[heatmap_data[col].get(row, None) for col in labels] for row in labels]
             fig = go.Figure(data=go.Heatmap(z=z_values, x=labels, y=labels, colorscale="Blues"))
             fig.update_layout(title="Correlation / Transition Heatmap")
 

@@ -12,12 +12,47 @@ def correlation_analysis(df: pd.DataFrame, cols: list) -> dict:
     return {"result": corr.to_dict(), "type": "correlation_matrix"}
 
 def attribute_ranking_regression(df: pd.DataFrame, target: str, features: list) -> dict:
-    data = df[[target] + features].dropna()
-    X = pd.get_dummies(data[features], drop_first=True)
+    data = df[[target] + features].dropna(subset=[target])
     y = data[target]
-    model = LinearRegression().fit(X, y)
-    ranking = dict(sorted(zip(X.columns, model.coef_), key=lambda x: abs(x[1]), reverse=True))
-    return {"result": ranking, "r_squared": model.score(X, y), "type": "regression_ranking", "n_rows_used": len(data)}
+
+    feature_df = pd.DataFrame(index=data.index)
+    skipped_columns = []
+
+    for col in features:
+        col_data = data[col]
+
+        if pd.api.types.is_datetime64_any_dtype(col_data):
+            feature_df[col] = (col_data - col_data.min()).dt.days
+
+        elif pd.api.types.is_bool_dtype(col_data):
+            feature_df[col] = col_data.astype(int)
+
+        elif pd.api.types.is_numeric_dtype(col_data):
+            feature_df[col] = col_data
+
+        else:
+            n_unique = col_data.nunique()
+            if n_unique > 50 or n_unique >= 0.9 * len(col_data):
+                skipped_columns.append(f"{col} (too many unique values to use as a category — likely an identifier)")
+                continue
+            dummies = pd.get_dummies(col_data, prefix=col, drop_first=True)
+            feature_df = pd.concat([feature_df, dummies], axis=1)
+
+    feature_df = feature_df.dropna()
+    y = y.loc[feature_df.index]
+
+    if feature_df.shape[1] == 0 or len(feature_df) == 0:
+        raise ValueError(f"No usable features remain after filtering. Skipped: {skipped_columns}")
+
+    model = LinearRegression().fit(feature_df, y)
+    ranking = dict(sorted(zip(feature_df.columns, model.coef_), key=lambda x: abs(x[1]), reverse=True))
+    return {
+        "result": ranking,
+        "r_squared": model.score(feature_df, y),
+        "type": "regression_ranking",
+        "n_rows_used": len(feature_df),
+        "skipped_columns": skipped_columns,
+    }
 
 def segmentation(df: pd.DataFrame, features: list, n_clusters: int = 3) -> dict:
     X = df[features].dropna()

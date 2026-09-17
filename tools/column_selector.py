@@ -22,6 +22,15 @@ METHOD_PARAM_SPEC = {
     },
 }
 
+ALL_COLUMNS_PHRASES = ["all column", "all attribute", "all feature", "every column", "every attribute"]
+
+def _detect_explicit_target(question: str, numeric_cols: list) -> str:
+    q_lower = question.lower()
+    for col in numeric_cols:
+        if col.lower() in q_lower:
+            return col
+    return None
+
 def _fallback_value(param: str, numeric_cols: list, categorical_cols: list, exclude=None):
     exclude = exclude or []
     available_numeric = [c for c in numeric_cols if c not in exclude]
@@ -51,6 +60,20 @@ def select_columns(method: str, question: str, df, llm: LLMClient) -> dict:
     categorical_cols = list(df.select_dtypes(exclude="number").columns)
     all_cols = set(df.columns)
 
+    if method == "attribute_ranking_regression":
+        q_lower = question.lower()
+        explicit_target = _detect_explicit_target(question, numeric_cols)
+        wants_all_columns = any(phrase in q_lower for phrase in ALL_COLUMNS_PHRASES)
+
+        usable_cols = [c for c in df.columns if df[c].nunique() < 0.9 * len(df)]
+
+        if explicit_target and wants_all_columns:
+            features = [c for c in usable_cols if c != explicit_target]
+            return {"target": explicit_target, "features": features}
+        elif explicit_target:
+            features = [c for c in usable_cols if c != explicit_target][:5]
+            return {"target": explicit_target, "features": features}
+
     prompt = f"""Business question: "{question}"
 
 Available columns:
@@ -76,8 +99,6 @@ Respond ONLY with a JSON object using the exact parameter names shown above as k
         print(f"[column_selector] JSON parse failed for method '{method}'. Raw output:\n{raw}")
         selected = {}
 
-    # Build final kwargs by going through the REQUIRED spec params one at a time,
-    # falling back individually for any that are missing or invalid.
     final = {}
     used_cols = []
     for param in spec.keys():
@@ -94,7 +115,6 @@ Respond ONLY with a JSON object using the exact parameter names shown above as k
             used_cols.append(value)
             continue
 
-        # Missing, wrong key, or invalid column(s) -> fall back for THIS param only
         fallback = _fallback_value(param, numeric_cols, categorical_cols, exclude=used_cols)
         if fallback is not None:
             print(f"[column_selector] Falling back for '{param}' in method '{method}': using {fallback}")

@@ -1,5 +1,14 @@
 pack_name: default
 routes:
+  - trigger_patterns: ["individual chart", "chart for each", "all possible chart", "visualize each", "chart of each attribute", "donut chart", "gallery"]
+    method: chart_gallery
+    rationale: "Generates a dedicated chart for every attribute individually, plus its relationship to the target variable"
+  - trigger_patterns: ["all insight", "full analysis", "complete analysis", "everything about", "overview of everything"]
+    method: comprehensive_analysis
+    rationale: "Runs a broad sweep across descriptive stats, correlations, and top drivers to give a full picture"
+  - trigger_patterns: ["insight for", "insight on", "analyze", "analysis of", "using all"]
+    method: attribute_ranking_regression
+    rationale: "Ranks how all available attributes influence the specified target variable"
   - trigger_patterns: ["correlat", "relationship between", "related to"]
     method: correlation_analysis
     rationale: "Measures linear relationship strength between numeric variables"
@@ -15,3 +24,6 @@ routes:
   - trigger_patterns: ["segment", "group", "cluster", "types of customers"]
     method: segmentation
     rationale: "Groups records into similar clusters based on shared attributes"
+  - trigger_patterns: ["different", "compare", "significant difference"]
+    method: hypothesis_testing
+    rationale: "Tests whether an observed difference is statistically significant"
