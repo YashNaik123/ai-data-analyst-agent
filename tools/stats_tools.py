@@ -14,7 +14,10 @@ def profile_dataset(df: pd.DataFrame) -> dict:
             "missing_pct": round(col_data.isna().mean() * 100, 2),
             "n_unique": int(col_data.nunique()),
         }
-        if pd.api.types.is_numeric_dtype(col_data):
+        if pd.api.types.is_datetime64_any_dtype(col_data):
+            info["min_date"] = str(col_data.min())
+            info["max_date"] = str(col_data.max())
+        elif pd.api.types.is_numeric_dtype(col_data):
             q1, q3 = col_data.quantile(0.25), col_data.quantile(0.75)
             iqr = q3 - q1
             outliers = col_data[(col_data < q1 - 1.5*iqr) | (col_data > q3 + 1.5*iqr)]
@@ -25,6 +28,7 @@ def profile_dataset(df: pd.DataFrame) -> dict:
                 "outlier_count": int(outliers.count()),
             })
         else:
-            info["top_values"] = col_data.value_counts().head(3).to_dict()
+            top_vals = col_data.value_counts().head(3)
+            info["top_values"] = {str(k): int(v) for k, v in top_vals.items()}
         profile["columns"][col] = info
     return profile

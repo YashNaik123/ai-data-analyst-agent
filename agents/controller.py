@@ -2,6 +2,7 @@ import inspect
 from agents.profiling_agent import run_profiling_agent
 from agents.router_agent import load_pack, route_question
 from tools import ml_tools, chart_tools
+from tools.column_selector import select_columns
 from agents.insight_agent import generate_insight
 from llm.llm_client import LLMClient
 
@@ -24,24 +25,33 @@ class Controller:
         result = run_profiling_agent(filepath, self.llm)
         self.state["df"] = result["dataframe"]
         self.state["profile"] = result["profile"]
+        self.state["cleaning_report"] = result["cleaning_report"]
         return result["summary"]
 
-    def ask(self, question: str, method_kwargs: dict):
+    def ask(self, question: str, method_kwargs: dict = None):
         route = route_question(question, self.pack)
         method_fn = METHOD_MAP.get(route["method"])
         if not method_fn:
             return {"error": f"Method '{route['method']}' not implemented yet"}
 
-        # Only pass kwargs that this specific method actually accepts
+        if not method_kwargs:
+            method_kwargs = select_columns(route["method"], question, self.state["df"], self.llm)
+
         accepted_params = set(inspect.signature(method_fn).parameters.keys())
         filtered_kwargs = {k: v for k, v in method_kwargs.items() if k in accepted_params}
 
         try:
             analysis_result = method_fn(self.state["df"], **filtered_kwargs)
         except Exception as e:
-            return {"error": f"Analysis failed: {e}"}
+            return {"error": f"Analysis failed: {e}", "attempted_columns": filtered_kwargs}
 
         chart_info = chart_tools.select_and_render_chart(analysis_result["type"], analysis_result["result"])
         insight = generate_insight(analysis_result, self.llm)
 
-        return {"route": route, "analysis": analysis_result, "chart": chart_info, "insight": insight}
+        return {
+            "route": route,
+            "analysis": analysis_result,
+            "chart": chart_info,
+            "insight": insight,
+            "auto_selected_columns": filtered_kwargs,
+        }

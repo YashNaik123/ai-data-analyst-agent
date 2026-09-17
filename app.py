@@ -19,27 +19,36 @@ if uploaded_file:
     st.write("**Data Profile Summary:**")
     st.write(st.session_state.profile_summary)
 
+    if st.session_state.controller.state.get("cleaning_report") is not None:
+        with st.expander("See what cleaning was performed"):
+            report = st.session_state.controller.state["cleaning_report"]
+            if report:
+                for note in report:
+                    st.write("•", note)
+            else:
+                st.write("No cleaning was necessary.")
+
     st.write("---")
     question = st.text_input("Ask a business question about this data")
 
-    df_columns = st.session_state.controller.state["df"].columns
-    target = st.selectbox("Target column (what you're trying to explain)", df_columns)
-    features = st.multiselect("Feature columns (what might explain it)", df_columns)
-
     if question and st.button("Analyze"):
-        with st.spinner("Running analysis..."):
-            result = st.session_state.controller.ask(
-                question,
-                method_kwargs={"target": target, "features": features}
-            )
+        with st.spinner("Selecting columns and running analysis..."):
+            result = st.session_state.controller.ask(question)
 
         if "error" in result:
             st.error(result["error"])
+            if result.get("attempted_columns") is not None:
+                st.write("Columns it tried to use:", result["attempted_columns"])
+            st.info("Check your terminal for `[column_selector]` debug output showing what the model actually returned.")
         else:
             st.write("**Method used:**", result["route"]["method"], "—", result["route"]["rationale"])
+            st.write("**Columns auto-selected:**", result["auto_selected_columns"])
 
-            if result["chart"]["chart"]:
-                st.plotly_chart(result["chart"]["chart"])
+            chart = result["chart"].get("chart")
+            if chart is not None:
+                st.plotly_chart(chart)
+            elif result["chart"].get("render_error"):
+                st.warning(f"Chart could not be rendered: {result['chart']['render_error']}")
             st.write("**Chart rationale:**", result["chart"]["rationale"])
 
             st.write("**Observation:**", result["insight"].get("observation"))
